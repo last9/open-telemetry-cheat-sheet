@@ -1,0 +1,38 @@
+receivers:
+  filelog/pods:
+    include: [/var/log/pods/*/*/*.log]
+    operators:
+      - type: regex_parser
+        regex: '^(?P<time>\S+) (?P<stream>stdout|stderr) (?P<logtag>\w) (?P<log>.*)$'
+        timestamp:
+          parse_from: time
+          layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+      - type: add_attributes
+        attributes:
+          log.source: kubernetes_pods
+  
+  filelog/node:
+    include: [/var/log/node-problem-detector/node-problem-detector.log]
+    operators:
+      - type: regex_parser
+        regex: '^(?P<timestamp>\S+) (?P<severity>\S+) (?P<message>.*)$'
+        timestamp:
+          parse_from: timestamp
+          layout: '2006-01-02T15:04:05.999999999Z07:00'
+      - type: add_attributes
+        attributes:
+          log.source: node_problem_detector
+
+processors:
+  batch:
+
+exporters:
+  otlp:
+    endpoint: "otel-collector:4317"
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog/pods, filelog/node]
+      processors: [batch]
+      exporters: [otlp]

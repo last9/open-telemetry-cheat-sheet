@@ -1,0 +1,31 @@
+receivers:
+  filelog:
+    include: [ /var/log/pods/*/*/*.log ]
+    start_at: beginning
+    operators:
+      - type: regex_parser
+        regex: '^(?P<time>\S+) (?P<stream>stdout|stderr) (?P<logtag>\w) (?P<log>.*)$'
+        timestamp:
+          parse_from: time
+          layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+      - type: json_parser
+        parse_from: log
+      - type: resource
+        attributes:
+          - key: k8s.pod.name
+            from: resource.attributes["file.name"]
+            regex: '/var/log/pods/(?P<namespace>.*)/(?P<pod>.*)/.*\.log'
+
+processors:
+  batch:
+
+exporters:
+  otlp:
+    endpoint: "otel-collector:4317"
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog]
+      processors: [batch]
+      exporters: [otlp]

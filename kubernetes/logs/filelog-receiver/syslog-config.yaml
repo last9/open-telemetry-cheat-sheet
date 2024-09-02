@@ -1,0 +1,27 @@
+receivers:
+  filelog/syslog:
+    include: [/var/log/syslog]
+    start_at: beginning
+    operators:
+      - type: regex_parser
+        regex: '^(?P<timestamp>\S+\s+\S+\s+\S+)\s+(?P<host>\S+)\s+(?P<program>[^:]+):\s+(?P<message>.*)$'
+        timestamp:
+          parse_from: timestamp
+          layout: Jan 2 15:04:05
+      - type: add_attributes
+        attributes:
+          log.source: syslog
+
+processors:
+  batch:
+
+exporters:
+  otlp:
+    endpoint: "otel-collector:4317"
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog/syslog]
+      processors: [batch]
+      exporters: [otlp]
