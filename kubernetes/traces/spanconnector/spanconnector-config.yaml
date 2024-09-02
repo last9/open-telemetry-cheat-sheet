@@ -1,0 +1,38 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  spanconnector:
+    # Convert spans to metrics
+    metrics:
+      - name: http_requests_duration_count
+        description: The number of HTTP requests
+        unit: 1
+        type: sum
+        dimensions:
+          - http.method
+          - http.status_code
+        condition: 'attributes["http.method"] != ""'
+      - name: http_requests_duration_sum
+        description: The total duration of HTTP requests
+        unit: ms
+        type: sum
+        dimensions:
+          - http.method
+          - http.status_code
+        condition: 'attributes["http.method"] != ""'
+        value: 'duration_ms'
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [spanconnector]
+      exporters: [prometheus]
